@@ -1,20 +1,20 @@
-Setup:
+# Setup:
 1. Please download the dataset and unzip files into 'bicycle' folder then removing zip file.
 2. Install packages: pandas, tqdm
 3. Run: python bicycle_insurnace.py
 
-1. Check missing files: Will fill the missing value later
+# 1. Check missing files: Will fill the missing value later
 missing files: 2016-02: {'btp-street.csv'}
 missing files: 2016-03: {'btp-street.csv'}
 missing files: 2018-11: {'kent-street.csv', 'humberside-street.csv'}
 
-1.1 Build Northern Ireland areas and their coordinate.
+# 1.1 Build Northern Ireland areas and their coordinate.
 During data clearning, I discover that Northern Ireland doesn't have LSOA code,
 therefore, I used website's information to rebuilt its areas and coordinate.
 Area information: https://www.police.uk/northern-ireland/
 approximate coordinate: google map
 
-2. Load all data into single DataFrame:
+# 2. Load all data into single DataFrame:
 stage0-all_df.csv
 
 3. Decide the price should base on which attribute
