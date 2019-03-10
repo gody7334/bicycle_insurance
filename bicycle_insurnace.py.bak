@@ -1,0 +1,286 @@
+import os
+import pandas as pd
+import ipdb
+import numpy as np
+import collections
+from pprint import pprint as pp
+from tqdm import tqdm
+
+class bicycle_insurance_EDA():
+    def __init__(self, dataset_path,mode='EXP'):
+        self.mode = mode
+        self.dataset_path=dataset_path
+        self.months = os.listdir(dataset_path)
+        self.months.sort()
+        self.regions_dict = {}
+        self.all_regions = set()
+        self.regions_df_dict = {}
+        self.all_df = pd.DataFrame()
+        self.area_df = None
+        self.ni_area_df = None
+        self.summary = None
+        self.area_LOSA_count = None
+
+    def northern_ireland_area(self):
+        ni_area = {
+                'Antrim':'54.719610,-6.207239',
+                'Armagh':'54.350298,-6.652791',
+                'Ballymena':'54.865297,-6.280219',
+                'Castlereagh':'54.575749,-5.888258',
+                'Coleraine':'55.132580,-6.664610',
+                'Crossmaglen':'54.077413,-6.608756',
+                'Downpatrick':'54.328760,-5.715700',
+                'Dungannon':'54.508275,-6.766969',
+                'Enniskillen':'54.343826,-7.631546',
+                'Larne':'54.857801,-5.823623',
+                'Limavady':'55.045459,-6.933668',
+                'Lisburn':'54.516257,-6.057991',
+                'Lisburn Road':'54.577390,-5.952863',
+                'Lisnaskea':'54.252895,-7.442876',
+                'Lurgan':'54.463672,-6.334950',
+                'Magherafelt':'54.755361,-6.608004',
+                'Newry':'54.175100,-6.340185',
+                'Newtownabbey':'54.669108,-5.902554',
+                'Newtownards':'54.591377,-5.693180',
+                'Newtownhamilton':'54.193605,-6.576330',
+                'Omagh':'54.597696,-7.309958',
+                'Strabane':'54.827382,-7.463297',
+                'Strand Road':'55.006160,-7.320743',
+                'Strandtown':'54.600942,-5.882469',
+                'Tennent Street':'54.607721,-5.954411',
+                'Woodbourne':'54.568574,-6.013230',
+        }
+        df_dict = {'file':['northern-ireland-street.csv' for i in range(len(ni_area))],
+                'area':[a for a in ni_area.keys()],
+                'area_coor':[c for c in ni_area.values()]}
+        self.ni_area_df = pd.DataFrame.from_dict(df_dict)
+
+    def check_missing_regions(self):
+        '''
+        check missing regions in each month
+        '''
+        for month in self.months:
+            folder_path = self.dataset_path+month
+            if os.path.isdir(folder_path):
+                regions = os.listdir(folder_path)
+                regions = [r.replace(month+'-', '') for r in regions]
+                self.regions_dict[month] = regions
+                self.all_regions |= set(regions)
+
+        for month, regions in self.regions_dict.items():
+            missing_regions = self.all_regions - set(regions)
+            if len(missing_regions) > 0:
+                print(f'missing files: {month}: {missing_regions}')
+
+    def build_area_LOSA(self):
+        if os.path.isfile('./area_lsoa_count.csv'):
+            self.area_LOSA_count=pd.read_csv('./area_lsoa_count.csv')
+        else:
+            all_df = pd.DataFrame()
+            count=0
+            for month, regions in tqdm(self.regions_dict.items()):
+                for r in regions:
+                    df = pd.read_csv(self.dataset_path+month+'/'+month+'-'+r)
+                    df['area'] = df['LSOA name'].map(lambda x: " ".join(s for s in (str(x).split()[:-1])))
+                    df.insert(loc=0, column='file', value=r)
+                    all_df = pd.concat([all_df,df]) if len(all_df>0) else df
+                count+=1
+                if(self.mode=='DEV' and count==1):
+                    break
+            import ipdb; ipdb.set_trace();
+            all_df.reset_index(drop=True, inplace=True)
+            area_LOSA_count = all_df.groupby(['area','LSOA name']).size().reset_index(name='counts')
+            self.area_LOSA_count = area_LOSA_count[['area', 'LSOA name']].groupby(['area']).size().reset_index(name='counts')
+            self.area_LOSA_count.to_csv('./area_lsoa_count.csv', index=False)
+
+    def load_csv(self):
+        # combine df based on region
+        # filter crime type for saving computing time
+        count=0
+        for month, regions in tqdm(self.regions_dict.items()):
+            for r in regions:
+                df = pd.read_csv(self.dataset_path+month+'/'+month+'-'+r)
+                df = df[df['Crime type' ].str.contains("Bicycle theft")]
+                df.insert(loc=0, column='file', value=r)
+                self.all_df = pd.concat([self.all_df,df]) if len(self.all_df>0) else df
+
+            count+=1
+            if(self.mode=='DEV' and count==4):
+                break
+
+        self.all_df.reset_index(drop=True, inplace=True)
+
+    def add_area(self):
+        self.all_df['area'] = self.all_df['LSOA name'].map(lambda x: " ".join(s for s in (str(x).split()[:-1])))
+
+    def group_by_column_count(self, columns):
+        count_df = self.all_df.groupby(columns).size().reset_index(name='counts').sort_values(by=['counts'])
+
+    def get_area_coor(self):
+        assert 'area' in self.all_df
+        self.area_df = self.all_df[['file','area']]
+        self.area_df = self.area_df.groupby(['file','area']).size().reset_index(name='counts')
+        area_list = self.area_df['area'].values.tolist()
+        self.all_df['area_coor'] = ''
+        for area in area_list:
+            if area != '':
+                mean_coor = self.all_df[self.all_df['area']==area][['Latitude','Longitude']].mean(axis=0)
+                self.all_df.loc[self.all_df['area']==area,['area_coor']] = [str(mean_coor['Latitude'].item())+','+str(mean_coor['Longitude'].item())] * len(self.all_df[self.all_df['area']==area])
+
+        self.area_df = self.all_df.groupby(['file','area','area_coor']).size().reset_index(name='counts')
+        self.area_df = self.area_df[self.area_df['file']!='btp-street.csv']
+        self.area_df = self.area_df[self.area_df['area_coor']!='']
+
+        # there some cross force crime like: london city reported by Manchester,
+        # remove duplicate, keep only the first area that has largest count
+        self.area_df = self.area_df.sort_values(by=['counts'], ascending=False).drop_duplicates(['area'],keep='first').sort_values(by=['file'])
+        self.area_df = pd.concat([self.area_df, self.ni_area_df]).reset_index(drop=True).reset_index(drop=True)
+
+        self.summary = self.area_df[['file','area']]
+
+    def recover_area(self):
+        def find_close_coordinate_area(src, dest):
+            areas = []
+            for s in src:
+                # for de in dest:
+                    # de[0]
+                    # import ipdb; ipdb.set_trace();
+                distances = np.array([(float(s[0])-float(de[0]))**2+(float(s[1])-float(de[1]))**2 for de in dest])
+                area = self.area_df.iloc[np.argmin(distances)]['area']
+                areas.append(area)
+            return areas
+
+        nan_losa = self.check_Nan(['LSOA code'], opt='any')
+        nan_losa_with_coordinate = nan_losa[nan_losa[['Latitude','Longitude']].notnull().all(axis=1)]
+
+        src_df = nan_losa_with_coordinate
+        src_df['latlng'] = list(zip(nan_losa_with_coordinate['Latitude'], nan_losa_with_coordinate['Longitude']))
+        dest_df=self.area_df
+
+        src = src_df['latlng'].values.tolist()
+        dest = dest_df['area_coor'].values.tolist()
+        dest = [d.split(',') for d in dest]
+
+        areas = find_close_coordinate_area(src, dest)
+        nan_losa_with_coordinate['area']=areas
+
+        self.all_df.loc[nan_losa_with_coordinate.index,['area']]=areas
+
+        # check empty area with coor, should be empty
+        empty_area = self.all_df[self.all_df['area']=='']
+        self.empty_area_with_coordinate = empty_area[empty_area[['Latitude','Longitude']].notnull().all(axis=1)]
+
+    def check_Nan(self, column, opt='any'):
+        if opt=='any':
+            nan_df = self.all_df[self.all_df[column].isnull().any(axis=1)]
+        elif opt=='all':
+            nan_df = self.all_df[self.all_df[column].isnull().all(axis=1)]
+        return nan_df
+
+    def check_duplicate(self, columns, remove_null=True):
+        assert columns!=None
+        df_columns = self.all_df[columns]
+        duplicate_df = self.all_df[df_columns.duplicated(keep=False)].sort_values(by=['Crime ID'])
+        if remove_null: duplicate_df = duplicate_df[duplicate_df["Crime ID"].notnull()]
+        return duplicate_df
+
+    def remove_duplicate(self, columns):
+        # TODO keep first
+        self.all_df = self.all_df.drop_duplicates(columns, keep='first')
+        return
+
+    def get_monthly_summary(self, month=''):
+        assert month!=''
+        month_df = self.all_df[self.all_df['Month']==month]
+        month_summary_df = month_df.groupby(['Month', 'area']).size().reset_index(name='counts')
+        merge = pd.merge(self.summary, month_summary_df, how='left', on='area')
+        self.summary[month] = merge['counts'].values.tolist()
+
+        nan_losa_coordinate = month_df.check_Nan(['LSOA code', 'Latitude', 'Longitude'], opt='all')
+        # nan_losa_coordinate = self.check_Nan(['LSOA code', 'Latitude', 'Longitude'], opt='all')
+        import ipdb; ipdb.set_trace();
+
+bicycle_eda = bicycle_insurance_EDA('./bicycle/', 'DEV')
+bicycle_eda.check_missing_regions()
+
+bicycle_eda.build_area_LOSA()
+
+bicycle_eda.load_csv()
+bicycle_eda.northern_ireland_area()
+bicycle_eda.add_area()
+
+# check counts on different columns, to decide the price based on which level of area
+bicycle_eda.group_by_column_count(['file'])
+bicycle_eda.group_by_column_count(['area'])
+bicycle_eda.group_by_column_count(['LSOA code', 'LSOA name'])
+
+# build area coor by coor average
+bicycle_eda.get_area_coor()
+
+# get all losa is nan,
+nan_losa = bicycle_eda.check_Nan(['LSOA code'], opt='any')
+
+# get all losa is nan but has coordinate,
+nan_losa_with_coordinate = nan_losa[nan_losa[['Latitude','Longitude']].notnull().all(axis=1)]
+
+# we try to recover are using area coordinate
+bicycle_eda.recover_area()
+
+# Crime ID is nan, only happen in public transport police,
+# and crime can seperate based on area or coor
+nan_crimeid = bicycle_eda.check_Nan(['Crime ID'], opt='any')
+
+# and all case can find area
+nan_crimeid_losa =bicycle_eda.check_Nan(['LSOA code','Crime ID'], opt='all')
+
+# duplicate ID
+dup_crimeid = bicycle_eda.check_duplicate(['Crime ID'], True)
+
+# duplicate based on multiple columns
+dup_multi_columns = bicycle_eda.check_duplicate(['Crime ID'
+                                ,'Reported by'
+                                ,'Falls within'
+                                ,'Longitude'
+                                ,'Latitude'
+                                ,'Location'
+                                ,'LSOA code'
+                                ,'LSOA name'
+                                ,'Crime type'
+                                ])
+
+# remove duplicate
+bicycle_eda.remove_duplicate(['Crime ID'
+                                ,'Reported by'
+                                ,'Falls within'
+                                ,'Longitude'
+                                ,'Latitude'
+                                ,'Location'
+                                ,'LSOA code'
+                                ,'LSOA name'
+                                ,'Crime type'
+                                ])
+
+# check again
+check_dup_multi_columns = bicycle_eda.check_duplicate(['Crime ID'
+                                ,'Reported by'
+                                ,'Falls within'
+                                ,'Longitude'
+                                ,'Latitude'
+                                ,'Location'
+                                ,'LSOA code'
+                                ,'LSOA name'
+                                ,'Crime type'
+                                ])
+
+# get all losa and coordinate is nan
+# add split these case equally to areas within this region(csv)
+nan_losa_coordinate = bicycle_eda.check_Nan(['LSOA code', 'Latitude', 'Longitude'], opt='all')
+
+bicycle_eda.get_monthly_summary('2015-12')
+bicycle_eda.get_monthly_summary('2016-01')
+bicycle_eda.get_monthly_summary('2016-02')
+bicycle_eda.get_monthly_summary('2016-03')
+
+
+ipdb.set_trace()
+
