@@ -19,9 +19,9 @@ stage0-all_df.csv
 
 # 3. Decide the price should base on which attribute
 The following files show the crime counts based on different area size.
-###### a.LSOA code:                                  stage1.0-group_by_column_count_LSOA_code_LSOA_name.csv, stage1.0-group_by_column_count_LSOA_code_LSOA_name.png
-###### b.Area which remove last code in LSOA name:   stage1.0-group_by_column_count_area.csv, stage1.0-group_by_column_count_area.png
-###### c.File(Police force):                         stage1.0-group_by_column_count_file.csv, stage1.0-group_by_column_count_file.png
+#### a.LSOA code:                                  stage1.0-group_by_column_count_LSOA_code_LSOA_name.csv, stage1.0-group_by_column_count_LSOA_code_LSOA_name.png
+#### b.Area which remove last code in LSOA name:   stage1.0-group_by_column_count_area.csv, stage1.0-group_by_column_count_area.png
+#### c.File(Police force):                         stage1.0-group_by_column_count_file.csv, stage1.0-group_by_column_count_file.png
 * case a. there are more than half of LSOA code crime counts which are less than 5 in this two years period.
 * case c. the area is too big, which cannot tell the different between different city or county
 * case b. is the case between case a and c. It has better data distribution.
@@ -31,8 +31,8 @@ The coordinate is an approximation in order to reduce the search time in this sm
 stage1.1-area_coor.csv
 
 # 5. Check missing value: LSOA code
-###### a. LOSA code is Nan:                        stage1.2-nan_losa.csv
-###### b. LOSA code is Nan, but has coordinate:    stage1.2-nan_losa_with_coordinate.csv
+#### a. LOSA code is Nan:                        stage1.2-nan_losa.csv
+#### b. LOSA code is Nan, but has coordinate:    stage1.2-nan_losa_with_coordinate.csv
 * In case b, the area can be recovery using mean coordinate, which is built in step 4.
 
 # 6. Recovery missing area using mean coordinate
