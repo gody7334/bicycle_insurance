@@ -4,36 +4,36 @@
 3. Run: python bicycle_insurnace.py
 
 # 1. Check missing files: Will fill the missing value later
-missing files: 2016-02: {'btp-street.csv'}
-missing files: 2016-03: {'btp-street.csv'}
-missing files: 2018-11: {'kent-street.csv', 'humberside-street.csv'}
+* missing files: 2016-02: {'btp-street.csv'}
+* missing files: 2016-03: {'btp-street.csv'}
+* missing files: 2018-11: {'kent-street.csv', 'humberside-street.csv'}
 
 # 1.1 Build Northern Ireland areas and their coordinate.
 During data clearning, I discover that Northern Ireland doesn't have LSOA code,
 therefore, I used website's information to rebuilt its areas and coordinate.
-Area information: https://www.police.uk/northern-ireland/
-approximate coordinate: google map
+* Area information: https://www.police.uk/northern-ireland/
+* approximate coordinate: google map
 
 # 2. Load all data into single DataFrame:
 stage0-all_df.csv
 
 # 3. Decide the price should base on which attribute
 The following files show the crime counts based on different area size.
-a.LSOA code:                                  stage1.0-group_by_column_count_LSOA_code_LSOA_name.csv, stage1.0-group_by_column_count_LSOA_code_LSOA_name.png
-b.Area which remove last code in LSOA name:   stage1.0-group_by_column_count_area.csv, stage1.0-group_by_column_count_area.png
-c.File(Police force):                         stage1.0-group_by_column_count_file.csv, stage1.0-group_by_column_count_file.png
-case a. there are more than half of LSOA code crime counts which are less than 5 in this two years period.
-case c. the area is too big, which cannot tell the different between different city or county
-case b. is the case between case a and c. It has better data distribution.
+###### a.LSOA code:                                  stage1.0-group_by_column_count_LSOA_code_LSOA_name.csv, stage1.0-group_by_column_count_LSOA_code_LSOA_name.png
+###### b.Area which remove last code in LSOA name:   stage1.0-group_by_column_count_area.csv, stage1.0-group_by_column_count_area.png
+###### c.File(Police force):                         stage1.0-group_by_column_count_file.csv, stage1.0-group_by_column_count_file.png
+* case a. there are more than half of LSOA code crime counts which are less than 5 in this two years period.
+* case c. the area is too big, which cannot tell the different between different city or county
+* case b. is the case between case a and c. It has better data distribution.
 
 # 4. The area's coordinate is calculated using the mean coordinate of all bicycle theft crime within this area.
 The coordinate is an approximation in order to reduce the search time in this small project.
 stage1.1-area_coor.csv
 
 # 5. Check missing value: LSOA code
-a. LOSA code is Nan:                        stage1.2-nan_losa.csv
-b. LOSA code is Nan, but has coordinate:    stage1.2-nan_losa_with_coordinate.csv
-In case b, the area can be recovery using mean coordinate, which is built in step 4.
+###### a. LOSA code is Nan:                        stage1.2-nan_losa.csv
+###### b. LOSA code is Nan, but has coordinate:    stage1.2-nan_losa_with_coordinate.csv
+* In case b, the area can be recovery using mean coordinate, which is built in step 4.
 
 # 6. Recovery missing area using mean coordinate
 
